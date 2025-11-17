@@ -406,15 +406,15 @@
                     // Конвертируем данные из Excel в наш формат
                     const calculations = jsonData.map(row => {
                         return {
-                            id: row.id || Date.now() + Math.random(),
-                            personName: row.Имя || row.Name || row.personName || '',
-                            amount: parseFloat(row.Сумма || row.Amount || row.amount || 0),
+                            id: row.id || row.ID || Date.now() + Math.random(),
+                            personName: row.Имя || row.Name || row.personName || row['Имя человека'] || '',
+                            amount: parseFloat(row.Сумма || row.Amount || row.amount || row['Сумма заявки'] || 0),
                             tenPercentAmount: parseFloat(row['10%'] || row.tenPercent || row.tenPercentAmount || 0),
                             fivePercentAmount: parseFloat(row['5%'] || row.fivePercent || row.fivePercentAmount || 0),
                             afterTenPercent: parseFloat(row['После 10%'] || row.afterTenPercent || 0),
                             afterFivePercent: parseFloat(row['После 5%'] || row.afterFivePercent || 0),
                             remainder: parseFloat(row.Остаток || row.Remainder || row.remainder || 0),
-                            timestamp: row.Дата || row.Timestamp || row.timestamp || new Date().toLocaleString('ru-RU')
+                            timestamp: row.Дата || row.Timestamp || row.timestamp || row['Дата расчета'] || new Date().toLocaleString('ru-RU')
                         };
                     }).filter(calc => calc.personName && calc.amount > 0);
                     
@@ -486,7 +486,7 @@
                 const excelData = currentCalculations.map(calc => {
                     return {
                         'ID': calc.id,
-                        'Имя': calc.personName,
+                        'Имя человека': calc.personName,
                         'Сумма заявки': calc.amount,
                         '10%': calc.tenPercentAmount,
                         '5%': calc.fivePercentAmount,
@@ -498,34 +498,73 @@
                 });
                 
                 // Создаем рабочую книгу
-                const worksheet = XLSX.utils.json_to_sheet(excelData);
                 const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, 'Расчеты заявок');
                 
-                // Добавляем шапку с информацией
+                // Создаем основной лист с данными
+                const worksheet = XLSX.utils.json_to_sheet(excelData);
+                
+                // Добавляем шапку с информацией в отдельные строки
                 const metadata = [
-                    ['Отчет по расчетам заявок'],
+                    ['ОТЧЕТ ПО РАСЧЕТАМ ЗАЯВОК'],
                     ['Дата формирования:', new Date().toLocaleString('ru-RU')],
                     ['Всего расчетов:', currentCalculations.length],
-                    [''],
-                    ['Детальные расчеты:']
+                    [''], // Пустая строка
+                    ['Детальные расчеты:'],
+                    [''] // Пустая строка перед заголовками
                 ];
                 
+                // Добавляем метаданные в начало листа
                 XLSX.utils.sheet_add_aoa(worksheet, metadata, { origin: 'A1' });
+                
+                // Добавляем заголовки таблицы
+                const headers = [['ID', 'Имя человека', 'Сумма заявки', '10%', '5%', 'После 10%', 'После 5%', 'Остаток', 'Дата расчета']];
+                XLSX.utils.sheet_add_aoa(worksheet, headers, { origin: 'A7' });
+                
+                // Добавляем данные под заголовками
+                XLSX.utils.sheet_add_json(worksheet, excelData, { origin: 'A8', skipHeader: true });
                 
                 // Настраиваем ширину колонок
                 const colWidths = [
-                    { wch: 15 }, // ID
-                    { wch: 20 }, // Имя
-                    { wch: 15 }, // Сумма заявки
-                    { wch: 10 }, // 10%
-                    { wch: 10 }, // 5%
-                    { wch: 12 }, // После 10%
-                    { wch: 12 }, // После 5%
-                    { wch: 12 }, // Остаток
-                    { wch: 20 }  // Дата расчета
+                    { wch: 12 },  // ID
+                    { wch: 20 },  // Имя человека
+                    { wch: 15 },  // Сумма заявки
+                    { wch: 10 },  // 10%
+                    { wch: 10 },  // 5%
+                    { wch: 12 },  // После 10%
+                    { wch: 12 },  // После 5%
+                    { wch: 12 },  // Остаток
+                    { wch: 20 }   // Дата расчета
                 ];
                 worksheet['!cols'] = colWidths;
+                
+                // Добавляем границы для всей таблицы
+                const range = XLSX.utils.decode_range(worksheet['!ref']);
+                for (let R = range.s.r; R <= range.e.r; ++R) {
+                    for (let C = range.s.c; C <= range.e.c; ++C) {
+                        const cell_address = {c: C, r: R};
+                        const cell_ref = XLSX.utils.encode_cell(cell_address);
+                        if (!worksheet[cell_ref]) continue;
+                        
+                        // Добавляем стили границ
+                        worksheet[cell_ref].s = {
+                            border: {
+                                top: { style: "thin", color: { rgb: "000000" } },
+                                left: { style: "thin", color: { rgb: "000000" } },
+                                bottom: { style: "thin", color: { rgb: "000000" } },
+                                right: { style: "thin", color: { rgb: "000000" } }
+                            }
+                        };
+                        
+                        // Жирный шрифт для заголовков (строка 7)
+                        if (R === 6) {
+                            worksheet[cell_ref].s.font = { bold: true };
+                            worksheet[cell_ref].s.fill = { fgColor: { rgb: "F0F0F0" } };
+                        }
+                    }
+                }
+                
+                // Добавляем лист в книгу
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Расчеты заявок');
                 
                 // Скачиваем файл
                 const fileName = `расчеты_заявок_${new Date().toISOString().split('T')[0]}.xlsx`;
@@ -535,6 +574,7 @@
                 
             } catch (error) {
                 alert('Ошибка при экспорте в Excel: ' + error.message);
+                console.error('Excel export error:', error);
             }
         }
         
