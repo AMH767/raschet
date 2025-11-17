@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Калькулятор заявок с JSON файлом</title>
+    <title>Калькулятор заявок с JSON и Excel</title>
     <style>
         * {
             margin: 0;
@@ -80,6 +80,18 @@
         .load-btn:hover {
             background: #7B1FA2;
         }
+        .excel-btn {
+            background: #4CAF50;
+        }
+        .excel-btn:hover {
+            background: #45a049;
+        }
+        .clear-btn {
+            background: #ff4444;
+        }
+        .clear-btn:hover {
+            background: #cc0000;
+        }
         .result {
             margin-top: 25px;
             padding: 20px;
@@ -148,6 +160,12 @@
         .file-label:hover {
             background: #7B1FA2;
         }
+        .file-label.excel {
+            background: #4CAF50;
+        }
+        .file-label.excel:hover {
+            background: #45a049;
+        }
         .current-file {
             margin-top: 10px;
             padding: 10px;
@@ -156,12 +174,23 @@
             text-align: center;
             font-size: 0.9em;
         }
+        .export-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
         @media (max-width: 768px) {
             .container {
                 grid-template-columns: 1fr;
             }
+            .export-buttons {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
+    <!-- Подключаем библиотеку для работы с Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -188,8 +217,13 @@
                 <label for="jsonFile" class="file-label">📁 Выбрать JSON файл</label>
                 <input type="file" id="jsonFile" accept=".json" class="file-input" onchange="loadJSONFile(event)">
                 
-                <button class="save-btn" onclick="saveToJSON()">💾 Сохранить в JSON</button>
-                <button class="load-btn" onclick="loadFromJSON()">🔄 Загрузить из JSON</button>
+                <label for="excelFile" class="file-label excel">📊 Выбрать Excel файл</label>
+                <input type="file" id="excelFile" accept=".xlsx,.xls" class="file-input" onchange="loadExcelFile(event)">
+
+                <div class="export-buttons">
+                    <button class="save-btn" onclick="saveToJSON()">💾 Сохранить в JSON</button>
+                    <button class="excel-btn" onclick="exportToExcel()">📊 Экспорт в Excel</button>
+                </div>
             </div>
             
             <div class="result" id="currentResult" style="display: none;">
@@ -203,8 +237,13 @@
             <h2>📋 История расчетов</h2>
             <div id="historyList">
                 <p style="text-align: center; color: #666; padding: 20px;">
-                    Загрузите JSON файл для просмотра истории
+                    Загрузите JSON или Excel файл для просмотра истории
                 </p>
+            </div>
+            <div class="export-buttons">
+                <button class="save-btn" onclick="saveToJSON()">💾 Экспорт в JSON</button>
+                <button class="excel-btn" onclick="exportToExcel()">📊 Экспорт в Excel</button>
+                <button class="clear-btn" onclick="clearHistory()">🗑️ Очистить историю</button>
             </div>
         </div>
     </div>
@@ -239,7 +278,7 @@
             const tenPercentAmount = amount * 0.10;
             const fivePercentAmount = amount * 0.05;
             const afterTenPercent = amount - tenPercentAmount;
-            const afterFivePercent = amount - fivePercentAmount; // ИСПРАВЛЕНО: было fivePercentPercent
+            const afterFivePercent = amount - fivePercentAmount;
             const remainder = amount - tenPercentAmount - fivePercentAmount;
             
             // Показываем текущий расчет
@@ -336,14 +375,64 @@
                     updateFileInfo();
                     displayHistory();
                     
-                    alert(`Успешно загружено ${currentCalculations.length} расчетов из файла "${file.name}"`);
+                    alert(`Успешно загружено ${currentCalculations.length} расчетов из JSON файла`);
                     
                 } catch (error) {
-                    alert('Ошибка при загрузке файла: ' + error.message);
+                    alert('Ошибка при загрузке JSON файла: ' + error.message);
                 }
             };
             
             reader.readAsText(file);
+        }
+        
+        function loadExcelFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Предполагаем, что данные в первом листе
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    if (jsonData.length === 0) {
+                        throw new Error('Excel файл пуст');
+                    }
+                    
+                    // Конвертируем данные из Excel в наш формат
+                    const calculations = jsonData.map(row => {
+                        return {
+                            id: row.id || Date.now() + Math.random(),
+                            personName: row.Имя || row.Name || row.personName || '',
+                            amount: parseFloat(row.Сумма || row.Amount || row.amount || 0),
+                            tenPercentAmount: parseFloat(row['10%'] || row.tenPercent || row.tenPercentAmount || 0),
+                            fivePercentAmount: parseFloat(row['5%'] || row.fivePercent || row.fivePercentAmount || 0),
+                            afterTenPercent: parseFloat(row['После 10%'] || row.afterTenPercent || 0),
+                            afterFivePercent: parseFloat(row['После 5%'] || row.afterFivePercent || 0),
+                            remainder: parseFloat(row.Остаток || row.Remainder || row.remainder || 0),
+                            timestamp: row.Дата || row.Timestamp || row.timestamp || new Date().toLocaleString('ru-RU')
+                        };
+                    }).filter(calc => calc.personName && calc.amount > 0);
+                    
+                    currentCalculations = calculations;
+                    currentFileName = file.name;
+                    
+                    // Обновляем информацию и отображаем историю
+                    updateFileInfo();
+                    displayHistory();
+                    
+                    alert(`Успешно загружено ${currentCalculations.length} расчетов из Excel файла`);
+                    
+                } catch (error) {
+                    alert('Ошибка при загрузке Excel файла: ' + error.message);
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
         }
         
         function saveToJSON() {
@@ -383,12 +472,70 @@
             currentFileName = fileName;
             updateFileInfo();
             
-            alert(`Данные сохранены в файл "${fileName}" (${currentCalculations.length} расчетов)`);
+            alert(`Данные сохранены в JSON файл "${fileName}" (${currentCalculations.length} расчетов)`);
         }
         
-        function loadFromJSON() {
-            // Просто запускаем выбор файла
-            document.getElementById('jsonFile').click();
+        function exportToExcel() {
+            if (currentCalculations.length === 0) {
+                alert('Нет данных для экспорта');
+                return;
+            }
+            
+            try {
+                // Подготавливаем данные для Excel
+                const excelData = currentCalculations.map(calc => {
+                    return {
+                        'ID': calc.id,
+                        'Имя': calc.personName,
+                        'Сумма заявки': calc.amount,
+                        '10%': calc.tenPercentAmount,
+                        '5%': calc.fivePercentAmount,
+                        'После 10%': calc.afterTenPercent,
+                        'После 5%': calc.afterFivePercent,
+                        'Остаток': calc.remainder,
+                        'Дата расчета': calc.timestamp
+                    };
+                });
+                
+                // Создаем рабочую книгу
+                const worksheet = XLSX.utils.json_to_sheet(excelData);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Расчеты заявок');
+                
+                // Добавляем шапку с информацией
+                const metadata = [
+                    ['Отчет по расчетам заявок'],
+                    ['Дата формирования:', new Date().toLocaleString('ru-RU')],
+                    ['Всего расчетов:', currentCalculations.length],
+                    [''],
+                    ['Детальные расчеты:']
+                ];
+                
+                XLSX.utils.sheet_add_aoa(worksheet, metadata, { origin: 'A1' });
+                
+                // Настраиваем ширину колонок
+                const colWidths = [
+                    { wch: 15 }, // ID
+                    { wch: 20 }, // Имя
+                    { wch: 15 }, // Сумма заявки
+                    { wch: 10 }, // 10%
+                    { wch: 10 }, // 5%
+                    { wch: 12 }, // После 10%
+                    { wch: 12 }, // После 5%
+                    { wch: 12 }, // Остаток
+                    { wch: 20 }  // Дата расчета
+                ];
+                worksheet['!cols'] = colWidths;
+                
+                // Скачиваем файл
+                const fileName = `расчеты_заявок_${new Date().toISOString().split('T')[0]}.xlsx`;
+                XLSX.writeFile(workbook, fileName);
+                
+                alert(`Данные экспортированы в Excel файл "${fileName}" (${currentCalculations.length} расчетов)`);
+                
+            } catch (error) {
+                alert('Ошибка при экспорте в Excel: ' + error.message);
+            }
         }
         
         function displayHistory() {
@@ -433,6 +580,16 @@
                     </div>
                 </div>
             `).join('');
+        }
+        
+        function clearHistory() {
+            if (confirm('Вы уверены, что хотите очистить всю историю расчетов?')) {
+                currentCalculations = [];
+                currentFileName = '';
+                updateFileInfo();
+                displayHistory();
+                alert('История расчетов очищена');
+            }
         }
         
         // Добавляем обработчик Enter
