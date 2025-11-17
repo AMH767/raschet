@@ -239,7 +239,7 @@
             const tenPercentAmount = amount * 0.10;
             const fivePercentAmount = amount * 0.05;
             const afterTenPercent = amount - tenPercentAmount;
-            const afterFivePercent = amount - fivePercentPercent;
+            const afterFivePercent = amount - fivePercentAmount; // ИСПРАВЛЕНО: было fivePercentPercent
             const remainder = amount - tenPercentAmount - fivePercentAmount;
             
             // Показываем текущий расчет
