@@ -3,25 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Калькулятор процентов по заявке</title>
+    <title>Калькулятор заявок с JSON файлом</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
             font-family: Arial, sans-serif;
-            max-width: 500px;
-            margin: 50px auto;
+            background-color: #f0f2f5;
             padding: 20px;
-            background-color: #f5f5f5;
         }
-        .calculator {
-            background-color: white;
-            padding: 30px;
-            border-radius: 8px;
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .calculator, .history {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        h1 {
-            color: #333;
-            text-align: center;
-            margin-bottom: 30px;
+        h1, h2 {
+            color: #1a1a1a;
+            margin-bottom: 20px;
         }
         .input-group {
             margin-bottom: 20px;
@@ -32,114 +41,409 @@
             font-weight: bold;
             color: #555;
         }
-        input[type="number"] {
+        input {
             width: 100%;
             padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
+            border: 2px solid #ddd;
+            border-radius: 6px;
             font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            border-color: #4CAF50;
+            outline: none;
         }
         button {
-            width: 100%;
-            padding: 12px;
-            background-color: #4CAF50;
+            padding: 14px;
+            background: #4CAF50;
             color: white;
             border: none;
-            border-radius: 4px;
-            cursor: pointer;
+            border-radius: 6px;
             font-size: 16px;
-            margin-top: 10px;
+            cursor: pointer;
+            margin: 5px;
+            transition: background 0.3s;
+            width: 100%;
         }
         button:hover {
-            background-color: #45a049;
+            background: #45a049;
+        }
+        .save-btn {
+            background: #2196F3;
+        }
+        .save-btn:hover {
+            background: #1976D2;
+        }
+        .load-btn {
+            background: #9C27B0;
+        }
+        .load-btn:hover {
+            background: #7B1FA2;
         }
         .result {
-            margin-top: 30px;
+            margin-top: 25px;
             padding: 20px;
-            background-color: #f9f9f9;
-            border-radius: 4px;
+            background: #f8f9fa;
+            border-radius: 8px;
             border-left: 4px solid #4CAF50;
         }
-        .result-item {
+        .calculation-steps {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
             margin: 15px 0;
-            padding: 10px;
-            background-color: white;
+            border: 1px solid #e0e0e0;
+        }
+        .step {
+            margin: 10px 0;
+            padding: 8px;
+            background: #f8f9fa;
             border-radius: 4px;
         }
-        .highlight {
-            color: #2c3e50;
+        .final-result {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            border: 2px solid #4CAF50;
+        }
+        .history-item {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .person-name {
             font-weight: bold;
-            font-size: 1.1em;
+            color: #1a1a1a;
+            font-size: 1.2em;
+        }
+        .total-amount {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .file-input {
+            display: none;
+        }
+        .file-label {
+            display: block;
+            padding: 12px;
+            background: #9C27B0;
+            color: white;
+            text-align: center;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .file-label:hover {
+            background: #7B1FA2;
+        }
+        .current-file {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="calculator">
-        <h1>Калькулятор распределения заявки</h1>
-        
-        <div class="input-group">
-            <label for="amount">Сумма заявки:</label>
-            <input type="number" id="amount" placeholder="Введите сумму">
+    <div class="container">
+        <div class="calculator">
+            <h1>🧮 Калькулятор заявки</h1>
+            
+            <div class="input-group">
+                <label for="personName">Имя человека:</label>
+                <input type="text" id="personName" placeholder="Введите имя">
+            </div>
+            
+            <div class="input-group">
+                <label for="amount">Сумма заявки:</label>
+                <input type="number" id="amount" placeholder="Введите сумму">
+            </div>
+            
+            <button onclick="calculate()">Рассчитать</button>
+
+            <div class="current-file" id="currentFileInfo">
+                Файл не выбран
+            </div>
+
+            <div class="button-group">
+                <label for="jsonFile" class="file-label">📁 Выбрать JSON файл</label>
+                <input type="file" id="jsonFile" accept=".json" class="file-input" onchange="loadJSONFile(event)">
+                
+                <button class="save-btn" onclick="saveToJSON()">💾 Сохранить в JSON</button>
+                <button class="load-btn" onclick="loadFromJSON()">🔄 Загрузить из JSON</button>
+            </div>
+            
+            <div class="result" id="currentResult" style="display: none;">
+                <h3>📊 Текущий расчет:</h3>
+                <div class="calculation-steps" id="calculationSteps"></div>
+                <div class="final-result" id="finalResult"></div>
+            </div>
         </div>
         
-        <button onclick="calculate()">Рассчитать</button>
-        
-        <div class="result" id="result" style="display: none;">
-            <h3>Результаты расчёта:</h3>
-            <div class="result-item">
-                <strong>10% себе оставляет чел:</strong> 
-                <span class="highlight" id="tenPercent"></span>
-            </div>
-            <div class="result-item">
-                <strong>5% сюда (тебе):</strong> 
-                <span class="highlight" id="fivePercent"></span>
-            </div>
-            <div class="result-item">
-                <strong>Остаток после выплат:</strong> 
-                <span class="highlight" id="remainder"></span>
+        <div class="history">
+            <h2>📋 История расчетов</h2>
+            <div id="historyList">
+                <p style="text-align: center; color: #666; padding: 20px;">
+                    Загрузите JSON файл для просмотра истории
+                </p>
             </div>
         </div>
     </div>
 
     <script>
+        // Глобальные переменные
+        let currentCalculations = [];
+        let currentFileName = '';
+        
+        // Глобальный форматтер для чисел
+        const formatter = new Intl.NumberFormat('ru-RU', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        });
+        
         function calculate() {
-            // Получаем значение из поля ввода
+            const personName = document.getElementById('personName').value.trim();
             const amountInput = document.getElementById('amount');
             const amount = parseFloat(amountInput.value);
             
-            // Проверяем, что введена корректная сумма
+            // Проверяем ввод
+            if (!personName) {
+                alert('Пожалуйста, введите имя человека');
+                return;
+            }
             if (isNaN(amount) || amount <= 0) {
                 alert('Пожалуйста, введите корректную сумму заявки');
                 return;
             }
             
             // Производим расчеты
-            const tenPercent = amount * 0.10;
-            const fivePercent = amount * 0.05;
-            const remainder = amount - tenPercent - fivePercent;
+            const tenPercentAmount = amount * 0.10;
+            const fivePercentAmount = amount * 0.05;
+            const afterTenPercent = amount - tenPercentAmount;
+            const afterFivePercent = amount - fivePercentPercent;
+            const remainder = amount - tenPercentAmount - fivePercentAmount;
             
-            // Форматируем числа для красивого отображения
-            const formatter = new Intl.NumberFormat('ru-RU', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
+            // Показываем текущий расчет
+            showCurrentCalculation(personName, amount, tenPercentAmount, fivePercentAmount, 
+                                afterTenPercent, afterFivePercent, remainder);
             
-            // Отображаем результаты
-            document.getElementById('tenPercent').textContent = formatter.format(tenPercent) + ' руб.';
-            document.getElementById('fivePercent').textContent = formatter.format(fivePercent) + ' руб.';
-            document.getElementById('remainder').textContent = formatter.format(remainder) + ' руб.';
+            // Добавляем в текущие расчеты
+            addToCalculations(personName, amount, tenPercentAmount, fivePercentAmount, 
+                            afterTenPercent, afterFivePercent, remainder);
             
-            // Показываем блок с результатами
-            document.getElementById('result').style.display = 'block';
+            // Очищаем поля ввода
+            document.getElementById('personName').value = '';
+            amountInput.value = '';
         }
         
-        // Добавляем возможность расчёта по нажатию Enter
+        function showCurrentCalculation(personName, amount, tenPercentAmount, fivePercentAmount, 
+                                      afterTenPercent, afterFivePercent, remainder) {
+            const stepsDiv = document.getElementById('calculationSteps');
+            const finalDiv = document.getElementById('finalResult');
+            
+            stepsDiv.innerHTML = `
+                <div class="step"><strong>Расчет 10%:</strong> ${formatter.format(amount)} - 10% = ${formatter.format(afterTenPercent)}</div>
+                <div class="step"><strong>10% суммы:</strong> ${formatter.format(amount)} - ${formatter.format(afterTenPercent)} = <span style="color: #ff6b00;">${formatter.format(tenPercentAmount)}</span></div>
+                <div class="step"><strong>Расчет 5%:</strong> ${formatter.format(amount)} - 5% = ${formatter.format(afterFivePercent)}</div>
+                <div class="step"><strong>5% суммы:</strong> ${formatter.format(amount)} - ${formatter.format(afterFivePercent)} = <span style="color: #2196F3;">${formatter.format(fivePercentAmount)}</span></div>
+            `;
+            
+            finalDiv.innerHTML = `
+                <div style="text-align: center;">
+                    <div style="margin: 10px 0; font-size: 1.1em;">
+                        <span style="color: #ff6b00;">${formatter.format(tenPercentAmount)}</span> - себе оставляет чел
+                    </div>
+                    <div style="margin: 10px 0; font-size: 1.1em;">
+                        <span style="color: #2196F3;">${formatter.format(fivePercentAmount)}</span> - сюда (тебе)
+                    </div>
+                    <div style="margin: 10px 0; font-size: 1.1em;">
+                        Остаток: ${formatter.format(remainder)}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('currentResult').style.display = 'block';
+        }
+        
+        function addToCalculations(personName, amount, tenPercentAmount, fivePercentAmount, 
+                                 afterTenPercent, afterFivePercent, remainder) {
+            const calculation = {
+                id: Date.now(),
+                personName,
+                amount,
+                tenPercentAmount,
+                fivePercentAmount,
+                afterTenPercent,
+                afterFivePercent,
+                remainder,
+                timestamp: new Date().toLocaleString('ru-RU')
+            };
+            
+            currentCalculations.push(calculation);
+            
+            // Обновляем информацию о файле
+            updateFileInfo();
+        }
+        
+        function updateFileInfo() {
+            const fileInfo = document.getElementById('currentFileInfo');
+            if (currentFileName) {
+                fileInfo.textContent = `Текущий файл: ${currentFileName} (${currentCalculations.length} расчетов)`;
+                fileInfo.style.background = '#e8f5e8';
+            } else {
+                fileInfo.textContent = `Новые расчеты: ${currentCalculations.length} (выберите файл для сохранения)`;
+                fileInfo.style.background = '#fff3cd';
+            }
+        }
+        
+        function loadJSONFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    // Проверяем структуру файла
+                    if (!importedData.calculations || !Array.isArray(importedData.calculations)) {
+                        throw new Error('Неверный формат JSON файла');
+                    }
+                    
+                    currentCalculations = importedData.calculations;
+                    currentFileName = file.name;
+                    
+                    // Обновляем информацию и отображаем историю
+                    updateFileInfo();
+                    displayHistory();
+                    
+                    alert(`Успешно загружено ${currentCalculations.length} расчетов из файла "${file.name}"`);
+                    
+                } catch (error) {
+                    alert('Ошибка при загрузке файла: ' + error.message);
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+        
+        function saveToJSON() {
+            if (currentCalculations.length === 0) {
+                alert('Нет данных для сохранения');
+                return;
+            }
+            
+            // Создаем структуру JSON
+            const exportData = {
+                metadata: {
+                    created: new Date().toISOString(),
+                    totalCalculations: currentCalculations.length,
+                    version: "1.0",
+                    description: "Расчеты процентов по заявкам"
+                },
+                calculations: currentCalculations
+            };
+            
+            // Создаем и скачиваем JSON файл
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            
+            // Предлагаем имя файла
+            const fileName = currentFileName || `расчеты_заявок_${new Date().toISOString().split('T')[0]}.json`;
+            link.download = fileName;
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            // Обновляем имя файла
+            currentFileName = fileName;
+            updateFileInfo();
+            
+            alert(`Данные сохранены в файл "${fileName}" (${currentCalculations.length} расчетов)`);
+        }
+        
+        function loadFromJSON() {
+            // Просто запускаем выбор файла
+            document.getElementById('jsonFile').click();
+        }
+        
+        function displayHistory() {
+            const historyList = document.getElementById('historyList');
+            
+            if (currentCalculations.length === 0) {
+                historyList.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">Нет данных для отображения</p>';
+                return;
+            }
+            
+            // Сортируем по дате (новые сверху)
+            const sortedCalculations = [...currentCalculations].sort((a, b) => b.id - a.id);
+            
+            historyList.innerHTML = sortedCalculations.map(item => `
+                <div class="history-item">
+                    <div class="history-header">
+                        <span class="person-name">${item.personName}</span>
+                        <span class="total-amount">${formatter.format(item.amount)} руб.</span>
+                    </div>
+                    <div class="calculation-steps">
+                        <div class="step">${formatter.format(item.amount)} - 10% = ${formatter.format(item.afterTenPercent)}</div>
+                        <div class="step">${formatter.format(item.amount)} - ${formatter.format(item.afterTenPercent)} = <span style="color: #ff6b00;">${formatter.format(item.tenPercentAmount)}</span></div>
+                        <div class="step">${formatter.format(item.amount)} - 5% = ${formatter.format(item.afterFivePercent)}</div>
+                        <div class="step">${formatter.format(item.amount)} - ${formatter.format(item.afterFivePercent)} = <span style="color: #2196F3;">${formatter.format(item.fivePercentAmount)}</span></div>
+                    </div>
+                    <div class="final-result">
+                        <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                            <span>Человеку:</span>
+                            <span style="color: #ff6b00; font-weight: bold;">${formatter.format(item.tenPercentAmount)} руб.</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                            <span>Тебе:</span>
+                            <span style="color: #2196F3; font-weight: bold;">${formatter.format(item.fivePercentAmount)} руб.</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                            <span>Остаток:</span>
+                            <span style="font-weight: bold;">${formatter.format(item.remainder)} руб.</span>
+                        </div>
+                    </div>
+                    <div style="text-align: right; margin-top: 10px; font-size: 0.9em; color: #666;">
+                        ${item.timestamp}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Добавляем обработчик Enter
         document.getElementById('amount').addEventListener('keypress', function(event) {
             if (event.key === 'Enter') {
                 calculate();
             }
         });
+        
+        // Инициализация
+        updateFileInfo();
     </script>
 </body>
 </html>
